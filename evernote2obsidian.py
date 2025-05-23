@@ -12,7 +12,7 @@
 # 2025.05.23  0.1.0, 1st release
 # 2024.10.08  0.0.1, 1st version
 
-__version__ = "0.1.0"
+__version__ = "0.1.1"
 __author__  = "AltoRetrato"
 
 import os
@@ -737,23 +737,31 @@ class Exporter:
         def get_tasks_for_note_id(note_guid):
             tasks = {}
             # Get tasks for this note
-            for task_guid, raw_task in conn.execute(
-                "select guid, raw_task from tasks where note_guid=?",
-                (note_guid, ) ):
-                    try:
-                        task = json.loads(lzma.decompress(raw_task).decode("utf-8"))
-                        # Get reminders for this task
-                        for reminder_guid, raw_reminder in conn.execute(
-                            "select guid, raw_reminder from reminders where task_guid=?",
-                            (task_guid,) ):
-                            try:
-                                reminder = json.loads(lzma.decompress(raw_reminder).decode("utf-8"))
-                                task["reminders"].append(reminder)
-                            except Exception as e:
-                                log(logging.CRITICAL, f"Error reading reminder for task {task_guid}): {e}")
-                        tasks[task_guid] = task
-                    except Exception as e:
-                        log(logging.CRITICAL, f"Error reading task {task_guid} (for note {note_guid}): {e}")
+            try:
+                cursor = conn.execute(
+                    "select guid, raw_task from tasks where note_guid=?",
+                    (note_guid, ) )
+            except sqlite3.OperationalError as e:
+                log(logging.DEBUG, f"Tasks table not found in the database. Skipping task processing for note {note_guid}.")
+                return tasks
+            except Exception as e:
+                log(logging.WARN, f"Error executing query for tasks for note {note_guid}: {e}")
+                return tasks
+            for task_guid, raw_task in cursor:
+                try:
+                    task = json.loads(lzma.decompress(raw_task).decode("utf-8"))
+                    # Get reminders for this task
+                    for reminder_guid, raw_reminder in conn.execute(
+                        "select guid, raw_reminder from reminders where task_guid=?",
+                        (task_guid,) ):
+                        try:
+                            reminder = json.loads(lzma.decompress(raw_reminder).decode("utf-8"))
+                            task["reminders"].append(reminder)
+                        except Exception as e:
+                            log(logging.CRITICAL, f"Error reading reminder for task {task_guid}): {e}")
+                    tasks[task_guid] = task
+                except Exception as e:
+                    log(logging.CRITICAL, f"Error reading task {task_guid} (for note {note_guid}): {e}")
             return tasks
 
         def get_note_notecontent(row_note):
