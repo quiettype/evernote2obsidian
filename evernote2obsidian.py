@@ -12,7 +12,7 @@
 # 2025.05.23  0.1.0, 1st release
 # 2024.10.08  0.0.1, 1st version
 
-__version__ = "0.1.1"
+__version__ = "0.1.2"
 __author__  = "AltoRetrato"
 
 import os
