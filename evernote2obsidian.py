@@ -107,6 +107,7 @@ for option, value, name, help in (
     ("first_line_empty",   False,               "Make first note line empty",    "If True, add an empty line at the beginning of the note.\nThis is a cosmetic hack to avoid Obsidian showing code when you open a note in editing view."),
     ("remove_green_link",  False,               "Remove color of green links",   "For a while, Evernote made internal links (links to other notes) green.\nI recommend removing them and using a CSS snippet in Obsidian instead\nif you want all internal links to be green."),
     ("escape_brackets",    False,               "Replace [] with () in links",   "Square brackets [] are special characters in Markdown.\nThey can appear the text portion of your links, but might look a bit odd in Obsidian.\nSet this to True to replace them with parentheses ()."),
+    ("links_with_folders", True,                "Include folder path in links",  "Obsidian can have multiple notes with the same name in different folders.\nSet this to True to include the folder path in links. This helps avoid confusion when multiple notes share the same name.\nSet this to False to use only the note title in links. This keeps links simpler but may cause conflicts if note names are duplicated."),
     ("notebooks",          None,                "",                              "Notebooks to export"),
 ):
     default_cfg[option] = value
@@ -790,8 +791,8 @@ class Exporter:
         # 1st pass: get all note / attachment titles and IDs to make correct links later.
         log(IMPORTANT, f"Reading notebooks and notes from {cfg['database']}. This might take a while...")
         errors           = []
-        guid_to_path_rel = {} # Keep track of Evernote internal links to notes and files (relative path)
-        guid_to_path_abs = {} # Keep track of Evernote internal links to notes and files (absolute path)
+        guid_to_path_rel = {} # Keep track of Evernote internal links to notes and files (relative path, used in links in the notes)
+        guid_to_path_abs = {} # Keep track of Evernote internal links to notes and files (absolute path, used internally during conversion)
         path_to_guid     = {} # Keep track of Evernote internal links to notes and files
         hash_to_path     = {} # Keep track of Evernote hashes to attachments
         filenames_set    = set() # Keep track of filenames in lowercase
@@ -827,7 +828,9 @@ class Exporter:
                 # Create unique RELATIVE note path from notebook and note title
                 safe_name     = safe_path(f"{note.title}{self.note_ext}")
                 safe_name     = get_unique_filename(safe_name, filenames_set)
-                note_path_rel = posix_join(notebook_path_rel, safe_name)
+                if cfg["links_with_folders"]:
+                      note_path_rel = posix_join(notebook_path_rel, safe_name)
+                else: note_path_rel = safe_name
                 note_path_abs = posix_join(notebook_path_abs, safe_name)
                 filenames_set.add(note_path_rel.lower())
                 path_to_guid    [note_path_rel] = note.guid
@@ -875,8 +878,8 @@ class Exporter:
                     #     attachment_path_rel = attachment_path_abs
                     filenames_set.add(attachment_path_rel.lower())
                     path_to_guid[attachment_path_rel] = resource.guid
-                    guid_to_path_rel[resource.guid]       = attachment_path_rel
-                    guid_to_path_abs[resource.guid]       = attachment_path_abs
+                    guid_to_path_rel[resource.guid]   = attachment_path_rel
+                    guid_to_path_abs[resource.guid]   = attachment_path_abs
                     hash = int.from_bytes(resource.data.bodyHash) # Better int than .hex().zfill(32) ?
                     # TO-DO:
                     #  - Can we have one hash for two different files?
