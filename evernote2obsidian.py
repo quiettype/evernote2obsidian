@@ -557,7 +557,8 @@ def scan_db():
             note = pickle.loads(lzma.decompress(raw_note))
 
             note_has_issue = 0
-            note_content = re.search("<en-note[^>]*?>(.+?)</en-note>", note.content, re.DOTALL)[1]
+            re_note_content = re.search("<en-note[^>]*?>(.+?)</en-note>", note.content, re.DOTALL)
+            note_content = re_note_content[1] if re_note_content else ""
             note_titles.append(note.title)
 
             # Check for invalid names in note titles
@@ -772,7 +773,8 @@ class Exporter:
             if is_active or cfg["export_trash"]:
                 # Insert Rick and Morty reference... 🥒
                 note = pickle.loads(lzma.decompress(raw_note))
-                note_content = re.search("<en-note[^>]*?>(.+?)</en-note>", note.content, re.DOTALL)[1]
+                re_note_content = re.search("<en-note[^>]*?>(.+?)</en-note>", note.content, re.DOTALL)
+                note_content = re_note_content[1] if re_note_content else ""
                 # Check if note content is empty
                 if not cfg["export_empty_note"]:
                     if not note_content.replace("<div><br/></div>", ""):
