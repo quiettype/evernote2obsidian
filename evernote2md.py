@@ -8,10 +8,11 @@
 #
 # This is an Evernote HTML to Markdown converter.
 #
+# 2025.08.18  0.1.3, fix #9 "SyntaxWarning due to invalid escape sequences"
 # 2025.05.23  0.1.0, 1st release
 # 2024.11.19  0.0.1, 1st version
 
-__version__ = "0.1.0"
+__version__ = "0.1.3"
 __author__  = "AltoRetrato"
 
 import os
@@ -203,7 +204,7 @@ class EvernoteHTMLToMarkdownConverter:
             # Note 1: newer versions of Evernote use padding, older versions use margin.
             # Note 2: indented lines following a blank line are interpreted as code blocks.
             #         Workaround: use a bullet list (works even if you set it on just the 1s line!).
-            padding_left = re.findall("(?:padding|margin)-left\s*:\s*(\d+)\s*px", style)
+            padding_left = re.findall(r"(?:padding|margin)-left\s*:\s*(\d+)\s*px", style)
             if padding_left:
                 indent = "    " * (int(padding_left[0])//40)
                 result = f'{indent}{result}'

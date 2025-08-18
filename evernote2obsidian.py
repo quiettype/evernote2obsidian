@@ -9,10 +9,11 @@
 # This program converts an Evernote backup created with evernote-backup
 # (https://github.com/vzhd1701/evernote-backup) to Obsidian Markdown (or HTML).
 #
+# 2025.08.18  0.1.3, fix #9 "SyntaxWarning due to invalid escape sequences"
 # 2025.05.23  0.1.0, 1st release
 # 2024.10.08  0.0.1, 1st version
 
-__version__ = "0.1.2"
+__version__ = "0.1.3"
 __author__  = "AltoRetrato"
 
 import os
@@ -254,19 +255,19 @@ def has_emoji(s):
     # Regular expression pattern for emojis, excluding Japanese Unicode ranges
     # Might be incomplete and/or plain wrong...
     emoji_pattern = re.compile(
-        "[\U0001F600-\U0001F64F]"  # emoticons
-        "|[\U0001F300-\U0001F5FF]"  # symbols & pictographs
-        "|[\U0001F680-\U0001F6FF]"  # transport & map symbols
-        "|[\U0001F700-\U0001F77F]"  # alchemical symbols
-        "|[\U0001F780-\U0001F7FF]"  # Geometric shapes extended
-        "|[\U0001F800-\U0001F8FF]"  # Supplemental Arrows-C
-        "|[\U0001F900-\U0001F9FF]"  # Supplemental Symbols and Pictographs
-        "|[\U0001FA00-\U0001FA6F]"  # Chess Symbols
-        "|[\U0001FA70-\U0001FAFF]"  # Symbols and Pictographs Extended-A
-        "|[\U00002702-\U000027B0]"  # Dingbats
+        r"[\U0001F600-\U0001F64F]"  # emoticons
+        r"|[\U0001F300-\U0001F5FF]"  # symbols & pictographs
+        r"|[\U0001F680-\U0001F6FF]"  # transport & map symbols
+        r"|[\U0001F700-\U0001F77F]"  # alchemical symbols
+        r"|[\U0001F780-\U0001F7FF]"  # Geometric shapes extended
+        r"|[\U0001F800-\U0001F8FF]"  # Supplemental Arrows-C
+        r"|[\U0001F900-\U0001F9FF]"  # Supplemental Symbols and Pictographs
+        r"|[\U0001FA00-\U0001FA6F]"  # Chess Symbols
+        r"|[\U0001FA70-\U0001FAFF]"  # Symbols and Pictographs Extended-A
+        r"|[\U00002702-\U000027B0]"  # Dingbats
        #"|[\U000024C2-\U0001F251]"  # Enclosed characters # Conflicts with Japanese / Kanji
-        "|[\U0001F1E6-\U0001F1FF]"  # Flags (iOS)
-        "|[\U00002500-\U00002BEF]"  # Geometric Shapes
+        r"|[\U0001F1E6-\U0001F1FF]"  # Flags (iOS)
+        r"|[\U00002500-\U00002BEF]"  # Geometric Shapes
         , flags=re.UNICODE)
 
     return bool(emoji_pattern.search(s))
@@ -575,7 +576,7 @@ def scan_db():
 
             # Check if there are tables with "colspan" or "rowspan" > 1
             if cfg["check_tables"]:
-                num_span = re.findall('(?:col|row)span="(\d+)"', note_content)
+                num_span = re.findall(r'(?:col|row)span="(\d+)"', note_content)
                 if any(n != "1" for n in num_span):
                     note_has_issue = issue(f"[{note.title}] Merged cell in a table")
 
@@ -583,7 +584,7 @@ def scan_db():
             # content not editable in Evernote (but there is no list of that
             # content, AFAIK, so this is probably only a very small sample).
             # Can produce some false positives.
-            if re.findall('style="[^"]*(flex:|box-shadow:|float:\s*(?:left|right)|position:\s*(?:absolute|fixed|sticky))', note_content):
+            if re.findall(r'style="[^"]*(flex:|box-shadow:|float:\s*(?:left|right)|position:\s*(?:absolute|fixed|sticky))', note_content):
                 note_has_issue = issue(f'[{note.title}] "HTML Content" block in note')
 
             # Another unsupported HTML content is nested tables
@@ -612,11 +613,11 @@ def scan_db():
                 }
                 # TO-DO: add this somehow in the configuration ?
                 ignore_regex = set((
-                    'color\s*:\s*rgb\s*\(\s*24\s*,\s*168\s*,\s*65\s*', # green color for internal links
-                    "color\s*:\s*rgb\s*\(\s*105\s*,\s*170\s*,\s*53",   # green color for internal links
-                    "color\s*:\s*#69aa35",                             # green color for internal links
-                    "color\s*:\s*rgb\(\s*71,\s*18\s*,\s*100",          # white / blueish color?
-                    "border-color\s*:\s*#ccc",                         # border color of table cells
+                    r'color\s*:\s*rgb\s*\(\s*24\s*,\s*168\s*,\s*65\s*', # green color for internal links
+                    r"color\s*:\s*rgb\s*\(\s*105\s*,\s*170\s*,\s*53",   # green color for internal links
+                    r"color\s*:\s*#69aa35",                             # green color for internal links
+                    r"color\s*:\s*rgb\(\s*71,\s*18\s*,\s*100",          # white / blueish color?
+                    r"border-color\s*:\s*#ccc",                         # border color of table cells
                 ))
                 filtered_note_content = note_content
                 for regex in ignore_regex:
@@ -811,8 +812,8 @@ class Exporter:
             # Folder names can't end with a space or dot, so remove them
             stack_name        = (notebook["stack"] or "").strip()
             notebook_name     = notebook["name"].strip()
-            stack_name        = safe_path(re.sub("[\s\.]+$", "", stack_name))
-            notebook_name     = safe_path(re.sub("[\s\.]+$", "", notebook_name))
+            stack_name        = safe_path(re.sub(r"[\s\.]+$", "", stack_name))
+            notebook_name     = safe_path(re.sub(r"[\s\.]+$", "", notebook_name))
             notebook_path_rel = posix_join(stack_name, notebook_name)
             notebook_path_abs = posix_join(self.output_folder, notebook_path_rel)
             notebook_data.append({
@@ -1082,7 +1083,7 @@ class Exporter_HTML(Exporter):
                 log(logging.ERROR, f"    - [ERROR] Path to GUID not found: {guid} ({path})")
             return f'"{path}"'
 
-        content = re.sub('<en-media ([^>]+)\s*/>', subs_en_media, content)
+        content = re.sub(r'<en-media ([^>]+)\s*/>', subs_en_media, content)
         content = re.sub('"(?:evernote:///view/[^/]+/[^/]+/(.+?)/.+?|https://share.evernote.com/note/(.+?))"', subs_href, content)
         return content, errors
 
@@ -1173,14 +1174,14 @@ def scan_vault():
 
     for md_path, md_data in md_files.items():
         # Show "empty" notes
-        if re.match("^\s*$", md_data):
+        if re.match(r"^\s*$", md_data):
             log(IMPORTANT, f" - Empty note ({len(md_data)} bytes): {md_path}")
             stats["Empty notes"] += 1
 
         # Count ext. & int. links, internal links not found, linked files
         clean_md_data  = re.sub(r'```.*?```', '', md_data, flags=re.S)     # Remove code blocks (multiline)
         clean_md_data  = re.sub(r'`[^`]*`', '', clean_md_data, flags=re.S) # Remove inline code (single line)
-        external_links = re.findall("\[[^\]]+?\]\((.+?)\)", clean_md_data, flags=re.S)
+        external_links = re.findall(r"\[[^\]]+?\]\((.+?)\)", clean_md_data, flags=re.S)
         stats["External links"] += len(external_links)
         internal_links = re.findall(r"(?<!\\)\[\[([^\]]+?)\]\]", clean_md_data, flags=re.S)
         note_parent_path = os.path.split(md_path)[0]
