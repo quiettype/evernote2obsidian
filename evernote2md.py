@@ -8,11 +8,12 @@
 #
 # This is an Evernote HTML to Markdown converter.
 #
+# 2025.08.21  0.1.4, fix #8 "Crashes on notes with nested HTML tables"
 # 2025.08.18  0.1.3, fix #9 "SyntaxWarning due to invalid escape sequences"
 # 2025.05.23  0.1.0, 1st release
 # 2024.11.19  0.0.1, 1st version
 
-__version__ = "0.1.3"
+__version__ = "0.1.4"
 __author__  = "AltoRetrato"
 
 import os
@@ -363,6 +364,12 @@ class EvernoteHTMLToMarkdownConverter:
 
     def _process_table(self, node) -> str:
         """Convert HTML table to Markdown table."""
+        # We can't converted nested tables. In that case, just return the HTML.
+        if node.find("table"):
+            self.warnings.append("Nested tables are not supported, returning HTML")
+            return str(node)
+
+        # Convert HTML table to Markdown table.
         self.inside_table = True
         result     = []
         max_cols   = 0
