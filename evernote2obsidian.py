@@ -883,7 +883,7 @@ class Exporter:
                     path_to_guid[attachment_path_rel] = resource.guid
                     guid_to_path_rel[resource.guid]   = attachment_path_rel
                     guid_to_path_abs[resource.guid]   = attachment_path_abs
-                    hash = int.from_bytes(resource.data.bodyHash) # Better int than .hex().zfill(32) ?
+                    hash = int(resource.data.bodyHash.hex(), 16)
                     # TO-DO:
                     #  - Can we have one hash for two different files?
                     #  - What should we do if we have the same file in multiple places?
