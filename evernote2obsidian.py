@@ -1084,7 +1084,7 @@ class Exporter_HTML(Exporter):
             return f'"{path}"'
 
         content = re.sub(r'<en-media ([^>]+)\s*/>', subs_en_media, content)
-        content = re.sub('"(?:evernote:///view/[^/]+/[^/]+/(.+?)/.+?|https://share.evernote.com/note/(.+?))"', subs_href, content)
+        content = re.sub(r'"(?:evernote:///view/[^/]+/[^/]+/(.+?)/.+?|https://share.evernote.com/note/(.+?))"', subs_href, content)
         return content, errors
 
 
