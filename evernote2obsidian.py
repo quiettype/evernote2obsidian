@@ -1047,8 +1047,8 @@ class Exporter_HTML(Exporter):
         def subs_en_media(regex_match) -> str:
             en_media = regex_match[1]
             result = en_media
-            type_  = re.findall('type="([^"]+)"', en_media)[0]
-            hash   = int(re.findall('hash="([^"]+)"', en_media)[0], 16)
+            type_  = (re.findall('type="([^"]+)"', en_media) or [""])[0]
+            hash   = int((re.findall('hash="([^"]+)"', en_media) or ["0"])[0], 16)
             if not (path := hash_to_path.get(hash)):
                 log(logging.ERROR, f"    - [ERROR] Path to media hash not found: {hash}")
                 path = hash
