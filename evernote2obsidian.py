@@ -22,7 +22,7 @@ import json
 import lzma
 import pickle
 import logging
-import sqlite3
+import sqlite3  
 import mimetypes
 from   bs4         import BeautifulSoup
 from   typing      import Sequence, TypeVar
@@ -863,11 +863,11 @@ class Exporter:
                     #   - In case of HTML files, use "correct" format ([html file without ext]_files) ?
                     # - We're also not checking if there are links to each/all attachment in the note content. But should we?
                     attachment_folder_rel = "_resources"
-                    attachment_folder_abs = posix_join(notebook_path_abs, attachment_folder_rel)
-                    os.makedirs(attachment_folder_abs, exist_ok=True)
-                    attachment_path_rel   = posix_join(attachment_folder_rel, fn)
-                    attachment_path_rel   = get_unique_filename(attachment_path_rel, filenames_set)
-                    attachment_path_abs   = posix_join(notebook_path_abs, attachment_path_rel)
+                    # Create a unique full relative path for the attachment
+                    full_attachment_path_rel = posix_join(notebook_path_rel, attachment_folder_rel, fn)
+                    unique_full_path_rel     = get_unique_filename(full_attachment_path_rel, filenames_set)
+                    attachment_path_rel      = os.path.relpath(unique_full_path_rel, notebook_path_rel) # Path relative to note
+                    attachment_path_abs      = posix_join(self.output_folder, unique_full_path_rel)
 
                     fn = os.path.split(attachment_path_abs)[-1]
                     if resource.attributes.fileName and fn != resource.attributes.fileName:
@@ -879,7 +879,7 @@ class Exporter:
                     #     # Use RELATIVE paths in attachment_path if converting to Markdown or to HTML files
                     #     # Use ABSOLUTE paths in attachment_path if converting to .md files in HTML format
                     #     attachment_path_rel = attachment_path_abs
-                    filenames_set.add(attachment_path_rel.lower())
+                    filenames_set.add(unique_full_path_rel.lower())
                     path_to_guid[attachment_path_rel] = resource.guid
                     guid_to_path_rel[resource.guid]   = attachment_path_rel
                     guid_to_path_abs[resource.guid]   = attachment_path_abs
