@@ -866,7 +866,7 @@ class Exporter:
                     # Create a unique full relative path for the attachment
                     full_attachment_path_rel = posix_join(notebook_path_rel, attachment_folder_rel, fn)
                     unique_full_path_rel     = get_unique_filename(full_attachment_path_rel, filenames_set)
-                    attachment_path_rel      = os.path.relpath(unique_full_path_rel, notebook_path_rel) # Path relative to note
+                    attachment_path_rel      = to_posix(os.path.relpath(unique_full_path_rel, notebook_path_rel)) # Path relative to note
                     attachment_path_abs      = posix_join(self.output_folder, unique_full_path_rel)
 
                     fn = os.path.split(attachment_path_abs)[-1]
@@ -954,6 +954,7 @@ class Exporter:
                     attachment_path_abs = guid_to_path_abs[resource.guid]
 
                     # Save attachment file
+                    os.makedirs(os.path.dirname(attachment_path_abs), exist_ok=True)
                     if not cfg["overwrite"] and os.path.exists(attachment_path_abs):
                         log(logging.WARNING, f"    - Skipping, already exists: {attachment_path_abs}")
                     else:
