@@ -1048,15 +1048,20 @@ class Exporter_HTML(Exporter):
             en_media = regex_match[1]
             result = en_media
             type_  = re.findall('type="([^"]+)"', en_media)[0]
-            hash   = int(re.findall('hash="([^"]+)"', en_media)[0], 16)
+            hash_hex = re.findall('hash="([^"]+)"', en_media)[0]
+            hash_int = int(hash_hex, 16)
+
             # Find the correct path for this attachment in this specific note
-            note_hash_paths = hash_to_paths.get(hash, {})
-            if not (path := note_hash_paths.get(note.guid)):
+            note_hash_paths = hash_to_paths.get(hash_int, {})
+            path = note_hash_paths.get(note.guid)
+
+            if not path:
                 # Fallback to any available path if the specific one isn't found
                 path = next(iter(note_hash_paths.values()), None)
                 if path is None:
-                    log(logging.ERROR, f"    - [ERROR] Path to media hash not found for this note: {hash}")
-                path = hash
+                    log(logging.ERROR, f"    - [ERROR] Path to media hash not found: {hash_hex}")
+                    path = hash_hex # Use the hex string as a fallback path
+
             if type_.startswith("image"):
                     width  = (re.findall(' width="[^"]+"',  en_media) or [""])[0]
                     height = (re.findall(' height="[^"]+"', en_media) or [""])[0]
@@ -1105,7 +1110,7 @@ class Exporter_MD(Exporter):
 
 
     def convert(self, note, content, guid_to_path, path_to_guid, hash_to_paths, tasks, options):
-        # Create a simple {hash: path} dictionary for the current note
+        # Create a simple {hash: path} dictionary for the current note for the converter
         note_specific_hash_to_path = {
             hash_val: paths.get(note.guid)
             for hash_val, paths in hash_to_paths.items() if note.guid in paths
