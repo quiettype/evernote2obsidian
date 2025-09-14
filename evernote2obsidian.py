@@ -797,7 +797,7 @@ class Exporter:
         guid_to_path_rel = {} # Keep track of Evernote internal links to notes and files (relative path, used in links in the notes)
         guid_to_path_abs = {} # Keep track of Evernote internal links to notes and files (absolute path, used internally during conversion)
         path_to_guid     = {} # Keep track of Evernote internal links to notes and files
-        hash_to_path     = {} # Keep track of Evernote hashes to attachments
+        hash_to_paths    = {} # Keep track of Evernote hashes to attachments
         filenames_set    = set() # Keep track of filenames in lowercase
         notebook_data    = []
         notebooks        = get_notebooks_from_db(conn)
@@ -883,11 +883,11 @@ class Exporter:
                     path_to_guid[attachment_path_rel] = resource.guid
                     guid_to_path_rel[resource.guid]   = attachment_path_rel
                     guid_to_path_abs[resource.guid]   = attachment_path_abs
-                    hash = int(resource.data.bodyHash.hex(), 16)
-                    # TO-DO:
-                    #  - Can we have one hash for two different files?
-                    #  - What should we do if we have the same file in multiple places?
-                    hash_to_path[hash] = attachment_path_rel
+                    hash = int.from_bytes(resource.data.bodyHash) # Better int than .hex().zfill(32) ?
+                    # Store all paths for a given hash, keyed by the note's GUID
+                    if hash not in hash_to_paths:
+                        hash_to_paths[hash] = {}
+                    hash_to_paths[hash][note.guid] = attachment_path_rel
 
         # 2nd pass: export notes
         log(IMPORTANT, f"Exporting from {cfg['database']} to {self.format} into {self.output_folder}")
@@ -1002,7 +1002,7 @@ class Exporter:
 
                     # Convert note body to HTML or Markdown
                     converted_content, conversion_issues = self.convert(
-                        note_content, guid_to_path_rel, path_to_guid, hash_to_path, task_groups, cfg)
+                        note, note_content, guid_to_path_rel, path_to_guid, hash_to_paths, task_groups, cfg)
 
                     if conversion_issues:
                         log(logging.WARNING, f'Issues converting "{note.title}" ({note_path_abs}):')
@@ -1040,17 +1040,22 @@ class Exporter_HTML(Exporter):
         )
 
 
-    def convert(self, content, guid_to_path, path_to_guid, hash_to_path, tasks, options):
+    def convert(self, note, content, guid_to_path, path_to_guid, hash_to_paths, tasks, options):
 
         errors = []
 
         def subs_en_media(regex_match) -> str:
             en_media = regex_match[1]
             result = en_media
-            type_  = (re.findall('type="([^"]+)"', en_media) or [""])[0]
-            hash   = int((re.findall('hash="([^"]+)"', en_media) or ["0"])[0], 16)
-            if not (path := hash_to_path.get(hash)):
-                log(logging.ERROR, f"    - [ERROR] Path to media hash not found: {hash}")
+            type_  = re.findall('type="([^"]+)"', en_media)[0]
+            hash   = int(re.findall('hash="([^"]+)"', en_media)[0], 16)
+            # Find the correct path for this attachment in this specific note
+            note_hash_paths = hash_to_paths.get(hash, {})
+            if not (path := note_hash_paths.get(note.guid)):
+                # Fallback to any available path if the specific one isn't found
+                path = next(iter(note_hash_paths.values()), None)
+                if path is None:
+                    log(logging.ERROR, f"    - [ERROR] Path to media hash not found for this note: {hash}")
                 path = hash
             if type_.startswith("image"):
                     width  = (re.findall(' width="[^"]+"',  en_media) or [""])[0]
@@ -1099,13 +1104,18 @@ class Exporter_MD(Exporter):
         self.converter = EvernoteHTMLToMarkdownConverter(use_html=cfg["html_with_md_ext"])
 
 
-    def convert(self, content, guid_to_path, path_to_guid, hash_to_path, tasks, options):
+    def convert(self, note, content, guid_to_path, path_to_guid, hash_to_paths, tasks, options):
+        # Create a simple {hash: path} dictionary for the current note
+        note_specific_hash_to_path = {
+            hash_val: paths.get(note.guid)
+            for hash_val, paths in hash_to_paths.items() if note.guid in paths
+        }
         markdown_content, warnings = self.converter.convert_html_to_markdown(
             content, 
             md_properties = [], # actually processed by parent of this
             tasks = tasks,
             guid_to_path = guid_to_path,
-            hash_to_path = hash_to_path,
+            hash_to_path = note_specific_hash_to_path,
             options      = options)
 
         # if warnings:
